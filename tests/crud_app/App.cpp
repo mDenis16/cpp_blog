@@ -56,13 +56,22 @@ void CApp::Main() {
 
 
      mServer->RouteHandler.AddRoute("/api/users", {EHttpRequestType::GET,
-         [](std::shared_ptr<CHttpRequest>& request) {
-       return [request]() {
-           std::this_thread::sleep_for(std::chrono::milliseconds(100));
-           return CHttpResponse{"multa muie"};
+         [this](std::shared_ptr<CHttpRequest>& request) {
+       return [this]() {
+            auto users = mUserManager->GetAll();
+
+           return  CHttpResponse{"GET CALLED"};
        };
    }});
 
+    mServer->RouteHandler.AddRoute("/api/users", {EHttpRequestType::POST,
+        [this](std::shared_ptr<CHttpRequest>& request) {
+      return [this]() {
+           auto users = mUserManager->GetAll();
+
+          return CHttpResponse{"POST CALLED"};
+      };
+  }});
     /*
     *mServer->InvokeAsync([this]() {
             auto users = mUserManager->GetAll();

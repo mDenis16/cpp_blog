@@ -20,7 +20,6 @@ bool CQueryResultSet::MapNextResult(void* objectPtr) {
     if (current > (results.size() - 1) || results.empty())
         return false;
 
-    std::cout << "CMapVector::MapNextResult generate objectPtr " << objectPtr << std::endl;
 
     for(auto& instruction : _instructions) {
         auto& result = results.at(current);
@@ -37,7 +36,6 @@ bool CQueryResultSet::MapNextResult(void* objectPtr) {
         if (current > (results.size() - 1))
             break;
     }
-    //std::cout << "CMapVector::MapNextResult end " << std::endl;
 
     return true;
 }

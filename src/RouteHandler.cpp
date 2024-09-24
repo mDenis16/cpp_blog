@@ -18,30 +18,24 @@ void CRouteHandler::AddRoute(const std::string& path, CRouteCallback callback) {
     }
 
     // At the leaf node, store the callback for the specific HTTP method
-    currentNode->callback = callback;
+    currentNode->callbacks[callback.type] = callback;
 
 }
 
-void CRouteHandler::AddRouteRecursively(Node& node, const std::vector<std::string>& segments, CRouteCallback callback) {
-    for (const auto& segment : segments) {
-        node = node.children[segment];
-    }
-    node.callback = callback;
-}
 
-bool CRouteHandler::FindRoute(const Node& node, const std::vector<std::string>& segments, CRouteCallback& callback) {
+std::optional<CRouteCallback> CRouteHandler::FindRoute(const Node& node, const std::vector<std::string>& segments,  EHttpRequestType requestType) {
     Node* currentNode = &root_;
     for (const auto& segment : segments) {
-        if (currentNode->children.find(segment) == currentNode->children.end()) {
-            std::cout << "Route not found!" << std::endl;
-            return false;
-        }
+        if (currentNode->children.find(segment) == currentNode->children.end())
+            return {};
         currentNode = &currentNode->children[segment];
     }
 
-    // Check if the method exists for the final node
-    callback = currentNode->callback;
-    return true;
+    auto it = currentNode->callbacks.find(requestType);
+    if (it != currentNode->callbacks.end())
+        return it->second;
+
+    return {};
 }
 std::vector<std::string> CRouteHandler::splitPath(const std::string& path)
 {
@@ -61,10 +55,7 @@ std::vector<std::string> CRouteHandler::splitPath(const std::string& path)
     return segments;
 }
 
-std::optional<CRouteCallback> CRouteHandler::GetRoute(const std::string& path) {
-    CRouteCallback callback;
+std::optional<CRouteCallback> CRouteHandler::GetRoute(const std::string& path, EHttpRequestType requestType) {
     auto segments = splitPath(path);
-    if (FindRoute(root_, segments, callback))
-        return callback;
-    return {};
+    return FindRoute(root_, segments, requestType);
 }

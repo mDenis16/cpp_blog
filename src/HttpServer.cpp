@@ -156,7 +156,7 @@ void CHttpServer::ReturnResponse(std::shared_ptr<CHttpRequest>& request) {
 }
 
 void CHttpServer::HandleRequest(std::shared_ptr<CHttpRequest>& request) {
-    auto callback = RouteHandler.GetRoute(request->getPath());
+    auto callback = RouteHandler.GetRoute(request->getPath(), request->getType());
     if (callback.has_value()) {
         auto response = callback.value().func(request);
         if (std::holds_alternative<std::function<CHttpResponse()>>(response)) {

@@ -63,7 +63,10 @@ private:
     inline void addHeader(std::string value, std::string key) { mHeaders[key] = value; }
     inline void setPath(std::string path) { mPath = path; }
     inline void setVersion(int version){ mVersion = version; }
-    inline void setTypeString(std::string typeString) { mTypeString = typeString; }
+    inline void setTypeString(std::string typeString) {
+        mTypeString = typeString;
+        mType = MethodToType(typeString);
+    }
     inline void setConnection(int _con) { con = _con; }
-
+    inline static EHttpRequestType MethodToType(std::string typeString);
 };

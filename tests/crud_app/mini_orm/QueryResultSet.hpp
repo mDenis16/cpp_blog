@@ -48,10 +48,7 @@ public:
     }
     template<class T>
     bool Map(T instance) {
-        if (MapNextResult(&instance))
-            return  true;
-
-        return  false;
+        return  MapNextResult(&instance);
     }
     bool MapNextResult(void* objectPtr);
 

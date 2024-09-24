@@ -103,10 +103,8 @@ public:
     int LastInsertedId() {
         return (int)sqlite3_last_insert_rowid(mDB);
     }
-    CQueryResultSet GetSet() {
-        CQueryResultSet set;
-
-        return set;
+    CQueryResultSet& GetSet() {
+        return mSet;
     }
     // Variadic template Bind
     template <typename T, typename... Args>
