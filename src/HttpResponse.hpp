@@ -2,6 +2,9 @@
 #include <vector>
 #include <iostream>
 #include <map>
+#include <nlohmann/json.hpp>
+
+
 
 class CHttpResponse {
 private:
@@ -10,12 +13,14 @@ private:
     std::map<std::string, std::string> mHeaders;
     std::string mBody;
 public:
+    CHttpResponse(nlohmann::json j);
     CHttpResponse();
     ~CHttpResponse();
 
     std::vector<uint8_t> Serialize();
     void addHeader(std::string key, std::string value);
     void removeHeader(std::string key);
+
 
     void setBody(std::string body) {
         mBody = body;

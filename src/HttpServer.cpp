@@ -1,13 +1,11 @@
 #include "HttpServer.hpp"
-
-
-
-
-
 #include "HttpRequest.hpp"
-#include "libs/picohttpparser.h"
 #include "HttpResponse.hpp"
-#include "CDispatchTask.hpp"
+#include "DispatchTask.hpp"
+
+#include "libs/picohttpparser.h"
+
+
 CHttpServer::CHttpServer(int _port, int _maxHeaders) : mPort(_port), mMaxHeaders(_maxHeaders) {
    mHeaders.resize(100);
 }
@@ -107,13 +105,10 @@ void CHttpServer::Listen() {
 
                 if (bytes_read > 0) {
 
-                    auto result = CHttpRequest::parseFromBuffer(buffer.data(), bytes_read, event.ident);
-                    if (result)
-                        HandleRequest(result);
+                    auto request = CHttpRequest::parseFromBuffer(buffer.data(), bytes_read, event.ident);
+                    if (request)
+                        HandleRequest(request);
 
-
-                    /*  EV_SET(&mEvSet, event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
-                      kevent(mKQ, &mEvSet, 1, NULL, 0, NULL);*/
 
                     EV_SET(&mEvSet, event.ident, EVFILT_USER, EV_ADD, 0, 0, NULL);
                     if (kevent(mKQ, &mEvSet, 1, NULL, 0, NULL) < 0)
@@ -126,55 +121,56 @@ void CHttpServer::Listen() {
             else if (event.filter == EVFILT_WRITE) {
 
                 if (event.udata) {
-                    auto request = static_cast<CHttpRequest*>(event.udata);
+                    auto request = *static_cast<std::shared_ptr<CHttpRequest>*>(event.udata);
                     auto& response = request->getResponse();
 
-
-                    const auto& buffer = response.Serialize();
-
+                    const auto& buffer = response->Serialize();
 
                     auto ret = send(event.ident, (const void*)(buffer.data()), buffer.size(), 0);
-
-                    std::cout << "Sent response for request id " << request->getId() << " original size " << buffer.size() << std::endl;
-
-
                     shutdown(event.ident, SHUT_WR);
-                    //  close(event.ident);
-
+                    delete event.udata;
                 }
             }
         }
     }
 }
 
-void CHttpServer::HandleRequest(CHttpRequest *request) {
-   // std::cout << "HandleRequest path: " << request->getPath() << std::endl;
 
-    auto route_itx = routes.find(request->getPath());
-
-    if (route_itx != routes.end())
-        if ((*route_itx).second(request))
-            ReturnResponse(request);
-
-}
-
-void CHttpServer::OnGet(std::string path, std::function<bool(CHttpRequest* request)> callback) {
-    routes[path] = std::move(callback);
-}
 void CHttpServer::RunDispatcher() {
     while (true) {
         CDispatchTask task = Dispatcher.Pop();
-        task.Execute();
+        auto response =  task.Execute();
         const auto request = task.GetHttpRequest();
-
+        request->setResponse(std::make_shared<CHttpResponse>(response));
         ReturnResponse(task.GetHttpRequest());
     }
 }
-void CHttpServer::InvokeAsync(std::function<void()> callback, CHttpRequest* request) {
-    CDispatchTask task(callback, request );
+void CHttpServer::InvokeAsync(std::function<CHttpResponse()> callback, std::shared_ptr<CHttpRequest>& request) {
+    CDispatchTask task( request, callback);
     Dispatcher.Push(task);
 }
-void CHttpServer::ReturnResponse(CHttpRequest* request) {
-    EV_SET(&mEvSet, request->GetConnection(), EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, request);
+void CHttpServer::ReturnResponse(std::shared_ptr<CHttpRequest>& request) {
+    auto ptr = new std::shared_ptr<CHttpRequest>(request);
+    EV_SET(&mEvSet, request->GetConnection(), EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, ptr);
     kevent(mKQ, &mEvSet, 1, NULL, 0, NULL);
+}
+
+void CHttpServer::HandleRequest(std::shared_ptr<CHttpRequest>& request) {
+    auto callback = RouteHandler.GetRoute(request->getPath());
+    if (callback.has_value()) {
+        auto response = callback.value().func(request);
+        if (std::holds_alternative<std::function<CHttpResponse()>>(response)) {
+            auto ret = std::get<std::function<CHttpResponse()>>(response);
+            auto task = CDispatchTask(request,  ret);
+            Dispatcher.Push(task);
+        }
+        else {
+            request->setResponse(std::make_shared<CHttpResponse>(std::get<CHttpResponse>(response)));
+        }
+    } else {
+        auto response = std::make_shared<CHttpResponse>();
+        response->setStatus(404);
+        request->setResponse(response);
+        ReturnResponse(request);
+    }
 }

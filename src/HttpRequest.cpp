@@ -11,7 +11,7 @@ CHttpRequest::~CHttpRequest() {
 
 }
 
-CHttpRequest* CHttpRequest::parseFromBuffer(void* buffer, size_t size, int con) {
+std::shared_ptr<CHttpRequest> CHttpRequest::parseFromBuffer(void* buffer, size_t size, int con) {
     //std::cout << "CHttpRequest::parseFromBuffer " << std::endl;
 
     const char *method;
@@ -29,7 +29,8 @@ CHttpRequest* CHttpRequest::parseFromBuffer(void* buffer, size_t size, int con) 
 
 
 
-    CHttpRequest* request = new CHttpRequest();
+    auto request = std::make_shared<CHttpRequest>();
+
     request->setPath(std::string(path, path_len));
     request->setVersion(minor_version);
     request->setConnection(con);
@@ -49,4 +50,8 @@ CHttpRequest* CHttpRequest::parseFromBuffer(void* buffer, size_t size, int con) 
 
 void CHttpRequest::Return() {
 
+}
+
+void CHttpRequest::InvokeAsync(std::function<CHttpResponse(std::shared_ptr<CHttpRequest> &request)> callback) {
+    
 }

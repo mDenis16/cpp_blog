@@ -53,26 +53,43 @@ bool CApp::GetUsers(CHttpRequest* request) {
 
 void CApp::Main() {
 
-    mServer->OnGet( "/posts", [this](CHttpRequest* request) {
+
+
+     mServer->RouteHandler.AddRoute("/api/users", {EHttpRequestType::GET,
+         [](std::shared_ptr<CHttpRequest>& request) {
+       return [request]() {
+           std::this_thread::sleep_for(std::chrono::milliseconds(100));
+           return CHttpResponse{"multa muie"};
+       };
+   }});
+
+    /*
+    *mServer->InvokeAsync([this]() {
+            auto users = mUserManager->GetAll();
+            return CHttpResponse();
+        }, request);
+     **/
+
+
+
+    /*mServer->OnGet( "/posts", [this](CHttpRequest* request) {
         mServer->InvokeAsync([request, this]() {
         auto posts= mBlogPostManager->GetAll();
-         CHttpResponse response{};
-            response.setStatus(200);
-            response.addHeader("Content-Type", "application/json");
-            response.addHeader("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
-            response.addHeader("Server", "MyServer");
-            response.addHeader("Pragma", "no-cache");
-
-
+            auto response = std::make_shared<CHttpResponse>();
+            response->setStatus(200);
+            response->addHeader("Content-Type", "application/json");
+            response->addHeader("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
+            response->addHeader("Server", "MyServer");
+            response->addHeader("Pragma", "no-cache");
 
            nlohmann::json j(posts);
 
-          response.setBody(j.dump());
+          response->setBody(j.dump());
 
         request->setResponse(response);
     }, request);
         return false;
-    });
+    });*/
   //  mServer->OnGet( "/users",std::bind(&CApp::GetUsers,
     //        this, std::placeholders::_1));
 

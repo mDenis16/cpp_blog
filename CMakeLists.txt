@@ -29,6 +29,8 @@ add_executable(cpp_blog
         tests/crud_app/mini_orm/QueryResultSet.hpp
         tests/crud_app/mini_orm/QueryResult.cpp
         tests/crud_app/mini_orm/QueryResult.hpp
+        src/RouteHandler.cpp
+        src/RouteHandler.hpp
 )
 
 

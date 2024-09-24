@@ -22,6 +22,7 @@
 #include "libs/picohttpparser.h"
 
 #include "DispatchQueue.hpp"
+#include "RouteHandler.hpp"
 
 class CHttpServer {
 private:
@@ -31,7 +32,7 @@ private:
     int mCurrentHeaders;
     std::thread mSqlThread;
     int mKQ;
-    std::array<struct kevent, 128> mEvList;
+    std::array<struct kevent, 32> mEvList;
     struct kevent mEvSet;
 public:
 
@@ -51,20 +52,21 @@ public:
 
     std::array<char8_t, 1024 * 8> buffer{0};
 
-    std::map<std::string, std::function<bool(CHttpRequest* request)>> routes;
-
-    void OnGet(std::string path,std::function<bool(CHttpRequest* request)> callback);
+    std::map<std::string, std::function<std::optional<CHttpResponse>(CHttpRequest* request)>> routes;
 
 
+    void HandleRequest(std::shared_ptr<CHttpRequest>& request);
 
     void RunDispatcher();
 
-    void InvokeAsync(std::function<void()> callback, CHttpRequest* request);
+    void InvokeAsync(std::function<CHttpResponse()> callback, std::shared_ptr<CHttpRequest>& request);
 
 
-    void ReturnResponse(CHttpRequest* request);
+    void ReturnResponse(std::shared_ptr<CHttpRequest>& request);
 
     CDispatchQueue Dispatcher;
+
+    CRouteHandler RouteHandler;
 
 };
 

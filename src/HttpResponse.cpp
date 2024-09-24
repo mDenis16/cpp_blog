@@ -1,6 +1,12 @@
 
 #include "HttpResponse.hpp"
 #include <sstream>
+CHttpResponse::CHttpResponse(nlohmann::json jobject) {
+    setBody(jobject.dump());
+    addHeader("Content-Type", "application/json");
+    setStatus(200);
+    addHeader("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
+}
 CHttpResponse::CHttpResponse() {
 
 }

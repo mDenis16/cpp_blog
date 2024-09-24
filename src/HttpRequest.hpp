@@ -24,7 +24,7 @@ class CHttpRequest {
     std::string mPath{};
     EHttpRequestType mType{EHttpRequestType::MIN};
     std::string mTypeString;
-    CHttpResponse mResponse{};
+    std::shared_ptr<CHttpResponse> mResponse;
     int mVersion{-1};
     int Id{0};
 
@@ -35,7 +35,7 @@ public:
     CHttpRequest();
     ~CHttpRequest();
 
-    static CHttpRequest* parseFromBuffer(void* buffer, size_t size, int con);
+    static std::shared_ptr<CHttpRequest> parseFromBuffer(void* buffer, size_t size, int con);
 
     inline EHttpRequestType getType() { return mType; }
 
@@ -47,14 +47,17 @@ public:
     int getId() {
         return Id;
     }
-    inline CHttpResponse& getResponse() { return mResponse; }
-     void setResponse(CHttpResponse response ) { mResponse = response; }
+    inline std::shared_ptr<CHttpResponse>& getResponse() { return mResponse; }
+    void setResponse(std::shared_ptr<CHttpResponse> response) { mResponse = response; }
 
     inline std::string& getPath(){ return mPath; }
 
 
     void Return();
     inline int GetConnection() { return con; }
+
+    void InvokeAsync(std::function<CHttpResponse(std::shared_ptr<CHttpRequest>& request)> callback);
+
 
 private:
     inline void addHeader(std::string value, std::string key) { mHeaders[key] = value; }
