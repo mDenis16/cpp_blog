@@ -22,6 +22,7 @@ public:
     void removeHeader(std::string key);
 
 
+
     void setBody(std::string body) {
         mBody = body;
     }

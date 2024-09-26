@@ -37,6 +37,9 @@ private:
 public:
 
 
+
+
+    int lastlen = 0;
     CHttpServer(int _port, int _maxHeaders);
     void Listen();
 
@@ -50,7 +53,8 @@ public:
 
     int ProcessBuffer(int receivedLength);
 
-    std::array<char8_t, 1024 * 8> buffer{0};
+    std::array<char8_t, 512> buffer{0};
+
 
     std::map<std::string, std::function<std::optional<CHttpResponse>(CHttpRequest* request)>> routes;
 

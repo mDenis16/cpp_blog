@@ -7,7 +7,7 @@
 
 
 CHttpServer::CHttpServer(int _port, int _maxHeaders) : mPort(_port), mMaxHeaders(_maxHeaders) {
-   mHeaders.resize(100);
+   mHeaders.resize(100000000);
 }
 
 int CHttpServer::ProcessBuffer(int receivedLength) {
@@ -66,9 +66,9 @@ void CHttpServer::Listen() {
     assert(-1 != kevent(mKQ, &mEvSet, 1, NULL, 0, NULL));
 
 
-    std::array<uint8_t, 1024> buffer;
+    std::array<uint8_t, 1024 * 8> buffer;
 
-    memset(buffer.data(), 0, 1024);
+
 
     std::thread t([this]() {
            RunDispatcher();
@@ -89,7 +89,8 @@ void CHttpServer::Listen() {
                 socklen_t socklen = sizeof(addr);
                 int connfd = accept(event.ident, (struct sockaddr *)&addr, &socklen);
                 if (connfd != -1) {
-                    EV_SET(&mEvSet, connfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+
+                    EV_SET(&mEvSet, connfd, EVFILT_READ, EV_ADD, 0, 0, nullptr);
                     if (kevent(mKQ, &mEvSet, 1, NULL, 0, NULL) < 0)
                     {
                         std::cout << "kevent " << std::endl;
@@ -98,38 +99,54 @@ void CHttpServer::Listen() {
                     std::cout << "failed accepting connection " << std::endl;
                 }
 
+
             }
             else if (event.filter == EVFILT_READ) {
 
+
+                memset(buffer.data(), 0, buffer.size());
                 size_t bytes_read = recv(event.ident, buffer.data(), buffer.size(), 0);
 
-                if (bytes_read > 0) {
+                auto* request = static_cast<CHttpRequest*>(event.udata);
+                if (request == nullptr) {
+                    request = new CHttpRequest();
 
-                    auto request = CHttpRequest::parseFromBuffer(buffer.data(), bytes_read, event.ident);
-                    if (request)
-                        HandleRequest(request);
-
-
-                    EV_SET(&mEvSet, event.ident, EVFILT_USER, EV_ADD, 0, 0, NULL);
+                    EV_SET(&mEvSet, event.ident, EVFILT_READ, EV_ADD, 0, 0, nullptr);
                     if (kevent(mKQ, &mEvSet, 1, NULL, 0, NULL) < 0)
                     {
                         std::cout << "kevent " << std::endl;
                     }
                 }
 
+                std::cout << " bytes_read " << bytes_read << std::endl;
+                if (bytes_read > 0) {
+
+                    auto* request = static_cast<CHttpRequest*>(event.udata);
+                    if (!request->OnRecv((void*)(buffer.data()), bytes_read)) {
+                        EV_SET(&mEvSet, event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+                        if (kevent(mKQ, &mEvSet, 1, NULL, 0, NULL) < 0)
+                        {
+                            std::cout << "kevent " << std::endl;
+                        }
+                    }
+                }else {
+                    std::cout << "finished reading " << std::endl;
+                }
+
             }
             else if (event.filter == EVFILT_WRITE) {
 
-                if (event.udata) {
+               /* if (event.udata) {
                     auto request = *static_cast<std::shared_ptr<CHttpRequest>*>(event.udata);
                     auto& response = request->getResponse();
 
                     const auto& buffer = response->Serialize();
 
                     auto ret = send(event.ident, (const void*)(buffer.data()), buffer.size(), 0);
+
                     shutdown(event.ident, SHUT_WR);
-                    delete event.udata;
-                }
+                    delete event.udata;*/
+                //}
             }
         }
     }
@@ -156,6 +173,7 @@ void CHttpServer::ReturnResponse(std::shared_ptr<CHttpRequest>& request) {
 }
 
 void CHttpServer::HandleRequest(std::shared_ptr<CHttpRequest>& request) {
+
     auto callback = RouteHandler.GetRoute(request->getPath(), request->getType());
     if (callback.has_value()) {
         auto response = callback.value().func(request);
@@ -166,6 +184,7 @@ void CHttpServer::HandleRequest(std::shared_ptr<CHttpRequest>& request) {
         }
         else {
             request->setResponse(std::make_shared<CHttpResponse>(std::get<CHttpResponse>(response)));
+            ReturnResponse(request);
         }
     } else {
         auto response = std::make_shared<CHttpResponse>();
@@ -174,3 +193,4 @@ void CHttpServer::HandleRequest(std::shared_ptr<CHttpRequest>& request) {
         ReturnResponse(request);
     }
 }
+
